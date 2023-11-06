@@ -1,6 +1,6 @@
 ### Overview  <a name="overview"/>
 
-```perl
+```
   Usage:  parentage.pl -parents FILE [-options]
 
   Given a file of individuals and parents, recursively determine the pedigree
