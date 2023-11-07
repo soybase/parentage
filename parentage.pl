@@ -56,6 +56,7 @@ open (my $P_FH, "<", $parents) or die "Can't open in parents: $parents $!\n";
 
 my $ped_str;
 my %HoA;
+my $START_IND; # global; there are also local instances: $ind
 while (<$P_FH>){
   chomp;
   next if (/^#/);
@@ -77,6 +78,7 @@ say "";
 
 if ($start){ # Starting individual was provided, so calculate parentage for it
   my $ind = $start;
+  $START_IND = $ind;
   $ped_str = "[$ind]: < $ind >";
   ped($ind, \%HoA);
   if ($format =~ /string/){ 
@@ -88,8 +90,9 @@ if ($start){ # Starting individual was provided, so calculate parentage for it
 else { # No starting individual was provided, so calculate parentage for all
   while( my ($key, $value) = each(%HoA)) {
     my ($ind, $p1, $p2) = ($key, $value->[0], $value->[1]);
+    $START_IND = $ind;
     $ped_str = "[$ind]: < $ind >";
-    ped($key, \%HoA);
+    ped($ind, \%HoA);
     if ($format =~ /string/){ 
       $ped_str =~ s/</(/g; $ped_str =~ s/>/)/g; 
       $ped_str =~ s/\[([^]]+)\]:/$1:/;
@@ -108,23 +111,24 @@ sub ped{
       $p1 = $item->{$key}->[0];
       $p2 = $item->{$key}->[1];
       if ( defined($p1) && defined($p2) ){
-        if ($format =~ /table/){ say join(", ", $key, $p1, $p2) }
+        if ($format =~ /table/){ say join("\t", $START_IND, $key, $p1, $p2) }
         $ped_str =~ s/ $key / $key < $p1 , $p2 > /g;
         ped($p1, $hshref);
         ped($p2, $hshref);
       }
       elsif ( defined($p1) && !defined($p2) ){
-        if ($format =~ /table/){ say join(", ", $key, $p1, "-") }
+        if ($format =~ /table/){ say join("\t", $START_IND, $key, $p1, "-") }
         $ped_str =~ s/ $key / $key < $p1 > /g;
         ped($p1, $hshref);
       }
       elsif ( !defined($p1) && defined($p2) ){
-        if ($format =~ /table/){ say join(", ", $key, "-", $p2) }
+        if ($format =~ /table/){ say join("\t", $START_IND, $key, "-", $p2) }
         $ped_str =~ s/ $key / $key < $p2 > /g;
         ped($p2, $hshref);
       }
     }
     else { # Individual is without a parent, so return
+      if ($format =~ /table/){ say join("\t", $START_IND, $key, "-", "-") }
       return 0;
     }
   }
@@ -134,4 +138,4 @@ __END__
 
 Versions
 2023-11-06 Initial version
-
+2023-11-07 Report starting individual in first column of table output
