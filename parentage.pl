@@ -9,12 +9,9 @@ use warnings;
 use strict; 
 use Getopt::Long;
 
-my $parents;
-my $start;
-my $format = "string,table";
-my $noself;
-my $verbose;
-my $help;
+my ($parents, $query, $noself, $verbose, $help);
+my $line_ct = 0;
+my $format = "table";
 
 my $usage = <<EOS;
   Usage:  parentage.pl -parents FILE [-options]
@@ -36,17 +33,17 @@ my $usage = <<EOS;
     -parents  File listing the individuals and parents
 
   Options:
-    -start    ID of an individual for which to calculate parentage.
+    -query    ID of an individual for which to calculate parentage.
               If not provided, report parentage for all individuals.
-    -format   Output format. Options: string, table [string,table]
-    -noself   Remove the starting ID from the parentage string.
+    -format   Output format. Options: string, table. Either or both (string,table) can be specified. [table]
+    -noself   Remove the query ID from the parentage string.
     -verbose  Report some intermediate information.
     -help     This message.
 EOS
 
 GetOptions(
   'parents=s'  => \$parents,  # required
-  'start:s'    => \$start,
+  'query:s'    => \$query,
   'format:s'   => \$format,
   'noself'     => \$noself,
   'v|verbose'  => \$verbose,
@@ -59,7 +56,7 @@ open (my $P_FH, "<", $parents) or die "Can't open in parents: $parents $!\n";
 
 my $ped_str;
 my %HoA;
-my $START_IND; # global; there are also local instances: $ind
+my $QUERY_IND; # global; there are also local instances: $ind
 while (<$P_FH>){
   chomp;
   next if (/^#/);
@@ -77,19 +74,24 @@ while (<$P_FH>){
     if ($verbose){say "$ind, $p1, $p2"};
   }
 }
-say "";
+#say "";
 
-if ($start){ # Starting individual was provided, so calculate parentage for it
-  my $ind = $start;
-  $START_IND = $ind;
+if ($query){ # Query individual was provided, so calculate parentage for it
+  my $ind = $query;
+  # Print header line
+  unless ($format =~ /string/){
+    say "Genotype\tFemale Parent\tMale Parent";
+  }
+
+  $QUERY_IND = $ind;
   $ped_str = "[$ind]: < $ind >";
   ped($ind, \%HoA);
   if ($format =~ /string/){ print_ped_string($ped_str) }
 }
-else { # No starting individual was provided, so calculate parentage for all
+else { # No query individual was provided, so calculate parentage for all
   while( my ($key, $value) = each(%HoA)) {
     my ($ind, $p1, $p2) = ($key, $value->[0], $value->[1]);
-    $START_IND = $ind;
+    $QUERY_IND = $ind;
     $ped_str = "[$ind]: < $ind >";
     ped($ind, \%HoA);
     if ($format =~ /string/){ print_ped_string($ped_str) }
@@ -106,24 +108,24 @@ sub ped {
       $p1 = $item->{$key}->[0];
       $p2 = $item->{$key}->[1];
       if ( defined($p1) && defined($p2) ){
-        if ($format =~ /table/){ print_table_row($START_IND, $key, $p1, $p2) }
+        if ($format =~ /table/){ print_table_row($QUERY_IND, $key, $p1, $p2) }
         $ped_str =~ s/ $key / $key < $p1 , $p2 > /g;
         ped($p1, $hshref);
         ped($p2, $hshref);
       }
       elsif ( defined($p1) && !defined($p2) ){
-        if ($format =~ /table/){ print_table_row($START_IND, $key, $p1, "-") }
+        if ($format =~ /table/){ print_table_row($QUERY_IND, $key, $p1, "-") }
         $ped_str =~ s/ $key / $key < $p1 > /g;
         ped($p1, $hshref);
       }
       elsif ( !defined($p1) && defined($p2) ){
-        if ($format =~ /table/){ print_table_row($START_IND, $key, "-", $p2) }
+        if ($format =~ /table/){ print_table_row($QUERY_IND, $key, "-", $p2) }
         $ped_str =~ s/ $key / $key < $p2 > /g;
         ped($p2, $hshref);
       }
     }
     else { # Individual is without a parent, so return
-      if ($format =~ /table/){ print_table_row($START_IND, $key, "-", "-") }
+      if ($format =~ /table/){ print_table_row($QUERY_IND, $key, "-", "-") }
       return 0;
     }
   }
@@ -131,7 +133,7 @@ sub ped {
 
 sub print_ped_string {
   my $ped_str = shift;
-  if ($noself){ # If set, remove starting ID prior to printing
+  if ($noself){ # If set, remove query ID prior to printing
     $ped_str =~ s/^(\S+:) < \S+ (<.+ >) >$/$1 $2/;
   }
   $ped_str =~ s/</(/g; $ped_str =~ s/>/)/g; 
@@ -141,16 +143,18 @@ sub print_ped_string {
 
 sub print_table_row {
   my $st_ind = shift; my $key = shift; my $p1 = shift; my $p2 = shift;
-  if ($noself){ # Don't print line that contains the individual and its parents
-    if ($key eq $START_IND){
-      return;
+  unless ($p1 eq "-" && $p2 eq "-"){
+    if ($noself){ # Don't print line that contains the individual and its parents
+      if ($key eq $QUERY_IND){
+        return;
+      }
+      else {
+        say join("\t", $key, $p1, $p2);
+      }
     }
     else {
-      say join("\t", $st_ind, $key, $p1, $p2);
+      say join("\t", $key, $p1, $p2);
     }
-  }
-  else {
-    say join("\t", $st_ind, $key, $p1, $p2);
   }
 }
 
@@ -160,4 +164,6 @@ Versions
 2023-11-06 Initial version
 2023-11-07 Report starting individual in first column of table output
 2023-11-08 Add flag -noself to remove the starting ID from the parentage string.
-
+2024-05-17 Change -start to -query. 
+           Change table output format, removing query from first column.
+           Add header for Helium: Genotype  Female Parent  Male Parent
