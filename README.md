@@ -32,7 +32,9 @@
 ### Example: Calculate pedigree strings for all genotypes in the input parent file
 
 Report the output as a table of genotype-parent-parent triples and a tree-like pedigree string
-(the default output option), and limit the reported pedigree size by setting `max_ped_size 10`:
+(the default output option), and limit the reported pedigree size by setting `max_ped_size 10`.
+Note: given the example data, with 14740 individuals with corresponding parents indicated, pedigrees 
+are generated for each; below, only the first 10 lines of the output are shown.
 
 ```
   ./parentage.pl -parents data/parentage.tsv -max 10 | head    
