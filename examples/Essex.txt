@@ -1,0 +1,8 @@
+Genotype	FemaleParent	MaleParent
+Essex	Lee	S5-7075
+Lee	S-100	C.N.S.
+S5-7075	N48-1248	Perry
+N48-1248	Roanoke	N45-745
+N45-745	Ogden	C.N.S.
+Ogden	Tokyo	PI 54610
+Perry	Patoka	L37-1355
