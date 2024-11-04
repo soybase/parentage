@@ -22,7 +22,7 @@ my $usage = <<EOS;
     parentage_report.pl -par parentage.tsv \\
                         -syn parentage-synonyms.tsv \\
                         -com parentage-comments.tsv \\
-                        -query "Fiskeby III"
+                        -query Hardin
 
   Given the requried input data, generate a report about an individual, including the pedigree, 
   any aliases/synonyms for the line, the lines which have the individual in their pedigree, 
