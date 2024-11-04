@@ -9,10 +9,11 @@ use warnings;
 use strict; 
 use Getopt::Long;
 
-my ($parents, $query, $last_only, $verbose, $help);
+my ($parents, $query, $outfile, $last_only, $verbose, $help);
 my $format = "string";
 my $line_ct = 0;
 my $max_ped_size = 999;
+my $outdir = ".";
 
 my $usage = <<EOS;
   Usage:  parentage.pl -parents FILE [-options]
@@ -34,6 +35,9 @@ my $usage = <<EOS;
   Options:
     -query    ID of an individual for which to calculate parentage.
               If not provided, report parentage for all individuals.
+    -outfile  Print to indicated filename; otherwise to STDOUT. 
+              If -outfile "QUERY" is indicated, the query name will be used (with spaces replaced by underscores).
+    -outdir   If outfile is specified, write files to this directory. Default "."
     -format   Output format. Options: string, table0, table1, list
                 string: pedigree string, in parenthetical tree format. Printed at increasing depth unless -last_only
                 table0: query parent1 parent2   With header line but no other information
@@ -50,6 +54,8 @@ EOS
 GetOptions(
   'parents=s'      => \$parents,  # required
   'query:s'        => \$query,
+  'outfile:s'      => \$outfile,
+  'outdir:s'       => \$outdir,
   'format:s'       => \$format,
   'last_only'      => \$last_only,
   'max_ped_size:i' => \$max_ped_size,
@@ -65,30 +71,41 @@ unless ($format =~ /table0|table1|string|list/){
 
 open (my $P_FH, "<", $parents) or die "Can't open in parents: $parents $!\n";
 
+my $OUT_FH;
+if ($outfile) { 
+  if ($outfile eq "QUERY"){
+    $outfile = $query;
+    $outfile =~ s/ /_/g;
+    $outfile =~ s/^(.+)$/$1.txt/g;
+  }
+  else {
+    # $outfile was specified by user and is different than "QUERY"
+  }
+  say "OUTFILE: $outdir/$outfile";
+  open ($OUT_FH, ">", "$outdir/$outfile") or die "\nUnable to open output file for writing: $!\n\n"; 
+}
+
 my $ped_str;
 my %HoA;
 my $QUERY_IND; # global; there are also local instances: $ind (individual)
 while (<$P_FH>){
   chomp;
-  my $line = $_;
   next if (/^#/ || /^Strain/);
-  my @parts = split(/\t+/, $_);
+  my $line = $_;
+  # Replace separator " x " with " , "
+  $line =~ s/ x / , /g;
+  # Replace parens with angles, for cases where the parent is compound. To make subsequent regexes easier to read.
+  $line =~ s/\(/</g;
+  $line =~ s/\)/>/g;
+  my @parts = split(/\t+/, $line);
   #if (scalar(@parts) < 3){die "Unexpected line with fewer than three elements: $_\n" }
   my ($ind, $p1, $p2) = ($parts[0], $parts[1], $parts[2]);
   if (!defined($p1) || !defined($p2)){
     if ($query && $query eq $ind){
-      say "!! Skipping parentage report for $query because one or both parents are missing.";
+      printstr("!! Skipping parentage report for $query because one or both parents are missing.");
     }
     next;
   }
-  # Replace separator " x " with " , "
-  $p1 =~ s/ x / , /g;
-  $p2 =~ s/ x / , /g;
-  # Replace parens with angles in $p1 and $p2, for cases where the parent is compound
-  $p1 =~ s/\(/</g;
-  $p1 =~ s/\)/>/g;
-  $p2 =~ s/\(/</g;
-  $p2 =~ s/\)/>/g;
   $HoA{ $ind } = [ $p1, $p2 ];
   if ($verbose){say "$ind, $p1, $p2"};
 }
@@ -106,12 +123,12 @@ foreach my $key (sort keys %HoA) {
   $count_processed++;
   my $value = $HoA{$key};
   $pedigree_size = 0;
-  unless ($query || $format =~ /list/){ # If query string, there's only one report, so no reason to give a count
-    say "## $count_processed ##";
+  unless ($query || $format =~ /list/ || $format =~ /table/){ # If query string, no reason to give a count
+    printstr("## $count_processed ##");
   }
   # Print header
-  if ($format =~ /table1/){ say "Query\tGenotype\tFemaleParent\tMaleParent" }
-  elsif ($format =~ /table0/){ say "Genotype\tFemaleParent\tMaleParent" }
+  if ($format =~ /table1/){ printstr("Query\tGenotype\tFemaleParent\tMaleParent") }
+  elsif ($format =~ /table0/){ printstr("Genotype\tFemaleParent\tMaleParent") }
   my ($ind, $p1, $p2) = ($key, $value->[0], $value->[1]);
   $QUERY_IND = $ind;
 
@@ -129,15 +146,16 @@ foreach my $key (sort keys %HoA) {
   
   if ($size_terminate == 1){
     unless ($format =~ /table0|list/){
-      say "!! Terminating search because number of individuals is greater than max_ped_size $max_ped_size";
+      printstr("!! Terminating search because number of individuals is greater than max_ped_size $max_ped_size");
     }
   }
   if ($cycle == 1){
     if ($size_terminate == 0){ # Don't bother reporting cycle if terminating because we've hit $max_ped_size
       unless ($format =~ /table0|list/){
-        say "!! Terminating search because of cycle.";
-        if ($cycle_string1){say $cycle_string1 }
-        if ($cycle_string2){say $cycle_string2 }
+        my $details = "";
+        if ($cycle_string1){$details .= "$cycle_string1\n" }
+        if ($cycle_string2){$details .= "$cycle_string2\n" }
+        printstr("!! Terminating search because of cycle.\n$details");
       }
     }
   }
@@ -145,7 +163,8 @@ foreach my $key (sort keys %HoA) {
   if ($format =~ /table1/){ print_ped_string($ped_str) }
   if ($format =~ /string/ && $last_only){ print_ped_string($ped_str) }
   if ($format =~ /list/){print_list($ped_str) }
-  if ($query && $format !~ /list/){ say "" } # print separator if more than just the query are being processed
+  # print separator if more than just the query are being processed
+  if (!$query && $format !~ /list/){ printstr("\n") }
 }
 
 sub ped {
@@ -193,12 +212,11 @@ sub ped {
 
 sub print_ped_string {
   $ped_str = shift;
-  #say "[$ped_str]";
   $ped_str =~ s/</(/g; 
   $ped_str =~ s/>/)/g; 
   #$ped_str =~ s/ , / X /g; 
   $ped_str =~ s/\[([^]]+)\]:\s+/$1 ==\t/;
-  say "$ped_str";
+  printstr("$ped_str");
 }
 
 sub print_list {
@@ -216,7 +234,7 @@ sub print_list {
       push @parent_A, $line;
     }
   }
-  say join("\t", @parent_A);
+  printstr(join("\t", @parent_A));
 }
 
 sub count_individuals {
@@ -237,13 +255,31 @@ sub count_individuals {
 
 sub print_table_row {
   my $st_ind = shift; my $key = shift; my $p1 = shift; my $p2 = shift;
+  $p1 =~ s/</(/g;
+  $p1 =~ s/>/)/g;
+  $p1 =~ s/,/X/g;
+  $p2 =~ s/</(/g;
+  $p2 =~ s/>/)/g;
+  $p2 =~ s/,/X/g;
   if ($format =~ /table1/){
-    say join("\t", "$st_ind ::", $key, $p1, $p2);
+    printstr(join("\t", "$st_ind ::", $key, $p1, $p2));
   }
   elsif ($format =~ /table0/){
-    say join("\t", $key, $p1, $p2);
+    printstr(join("\t", $key, $p1, $p2));
   }
 }
+
+# Print to outfile or to stdout
+sub printstr {
+  my $str_to_print = join("", @_);
+  if ($outfile) {
+    print $OUT_FH "$str_to_print\n";
+  }
+  else {
+    print "$str_to_print\n";
+  }
+}
+
 
 __END__
 
@@ -257,3 +293,4 @@ Versions
 2024-10-21 Report search pedigree_size
 2024-10-30 Many changes. Initialize start of recursion differently. Remove noself flag and add last_only.
 2024-11-01 Add format options table0 table1 list
+2024-11-04 Add option to print to specified file, with sub printstr
