@@ -29,6 +29,59 @@
     -help     This message.
 ```
 
+```
+  Usage:  parentage_report.pl -parents FILE -synonyms FILE -comments FILE -query ID [-options]
+  Example:
+    parentage_report.pl -par parentage.tsv \
+                        -syn parentage-synonyms.tsv \
+                        -com parentage-comments.tsv \
+                        -query Hardin
+
+  Given the requried input data, generate a report about an individual, including the pedigree,
+  any aliases/synonyms for the line, the lines which have the individual in their pedigree,
+  and any available comments about the individual.
+
+  Some other lines to try, to check various characteristics of the data:
+    Hardin, Hayes, Hamlin, Gnome, Franklin, Flyer, Flambeau, Williams, "Williams 82", Lee
+
+  Required:
+    -parents    File with three columns: individuals and parents individuals and the parents;
+    -synonyms   File with two columns: individual and synonym (if multiple synonyms, one line for each);
+    -comments   File with two columns: individual and comments
+    -query      ID of an individual for which to generate a report
+
+  Options:
+    -max_ped_size  The maximum number of individuals in the pedigree to report.
+    -verbose  Report some intermediate information.
+    -help     This message.
+```
+
+### Example: Generate a full report for a specified query (genotype)
+
+```
+  ./parentage_report.pl -par data/parentage.tsv \
+                        -syn data/parentage-synonyms.tsv \
+                        -com data/parentage-comments.tsv \
+                        -query Hardin \
+                        -max_ped_size 10
+```
+
+This generates the following report:
+```
+  Pedigree of Hardin (showing first the immediate parents, then progressively earlier crosses):
+  Hardin ==	( Corsoy 3 , Cutler 71 )
+  Hardin ==	( Corsoy 3 , ( Cutler 4 , SL5 ) )
+  Hardin ==	( Corsoy 3 , ( Cutler 4 , ( ( Kent 7 , L49-4196 ) , ( Kent 8 , Mukden ) ) ) )
+  
+  
+  Hardin is in the pedigree of these lines: 05KL119276, 05KL135608, Asgrow A2242, MT002989, OW1012750, PI 669396, Syngenta S16-Y6, XP1928
+  
+  Alternate names for Hardin: PI 548526, A76-102009
+  
+  Comments for Hardin: PVP 8100052
+
+```
+
 ### Example: Calculate pedigree strings for all genotypes in the input parent file
 
 Report the output as a table of genotype-parent-parent triples and a tree-like pedigree string
@@ -41,13 +94,14 @@ are generated for each; below, only the first 10 lines of the output are shown.
   
   ## 1 ##
   00CY622138 ==	( ( B152 , B231 ) , 11415 ) 
-  
   ## 2 ##
   02JR310007 ==	( CM4035N , Pioneer P93B82 ) 
   02JR310007 ==	( CM4035N , ( Pioneer P9273 , ( ( MO304 , Asgrow A3127 ) , ( Asgrow 3733 , Resnik ) ) ) ) 
   02JR310007 ==	( CM4035N , ( ( Pioneer P2981 , Asgrow A3127 ) , ( ( MO304 , Asgrow A3127 ) , ( Asgrow 3733 , Resnik ) ) ) ) 
   02JR310007 ==	( CM4035N , ( ( ( Hark , ( Corsoy , Calland ) ) , Asgrow A3127 ) , ( ( MO304 , Asgrow A3127 ) , ( Asgrow 3733 , Resnik ) ) ) ) 
   !! Terminating search because number of individuals is greater than max_ped_size 10
+  ## 3 ##
+  02JR310007BC1 ==	( 02JR310007 , ( 02JR310007 , 3607F9-AOYN ) ) 
 ```
 
 ### Example: Report input data and pedigree string for an indicated genotype
@@ -56,7 +110,7 @@ Report the output as a table of genotype-parent-parent triples, with header line
 This can be written to a file and used as input to the [Helium pedigree viewer](https://helium.hutton.ac.uk/#/pedigree)
 
 ```
-  ./parentage.pl -p data/parentage.tsv -f table -q Essex | grep "::" | perl -pe 's/.+ ::\t//' > Essex.tsv
+  ./parentage.pl -p data/parentage.tsv -f table0 -q Essex 
 
   Genotype	FemaleParent	MaleParent
   Essex	Lee	S5-7075
