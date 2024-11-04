@@ -106,8 +106,8 @@ while (<$COM_FH>){
 # Print report for the provided $query
 
 # Generate parentage result for the given query
-my @args2 = ( "-parents", "$parents", "-query", "$query", "-max", "$max_ped_size" );
-# say "perl $Bin/parentage.pl @args2";
+my @args2 = ( "-parents", "$parents", "-query", "\"$query\"", "-max", "$max_ped_size" );
+ say "perl $Bin/parentage.pl @args2";
 my $serialized_result2 = `perl "$Bin/parentage.pl" @args2`;
 say "Pedigree of $query (showing first the immediate parents, then progressively earlier crosses):";
 say $serialized_result2;
@@ -128,6 +128,6 @@ __END__
 Versions
 2024-11-01 Initial version
 2024-11-03 Calculate pedigrees from parentage table using parentage.pl, rather than take in as a precalculated file
-
+2024-11-04 Fix call to parentage.pl to permit query with spaces
 
 
