@@ -107,10 +107,24 @@ while (<$COM_FH>){
 
 # Generate parentage result for the given query
 my @args2 = ( "-parents", "$parents", "-query", "\"$query\"", "-max", "$max_ped_size" );
- say "perl $Bin/parentage.pl @args2";
+#say "perl $Bin/parentage.pl @args2";
 my $serialized_result2 = `perl "$Bin/parentage.pl" @args2`;
-say "Pedigree of $query (showing first the immediate parents, then progressively earlier crosses):";
-say $serialized_result2;
+if ($serialized_result2){ # Report the following only if a pedigree is returned.
+  say "Pedigree of $query (showing first the immediate parents, then progressively earlier crosses):";
+  say $serialized_result2;
+
+  # Call parentage.pl to produce tabular output for https://helium.hutton.ac.uk/#/pedigree
+  my $outfile = $query;
+  $outfile =~ s/ /_/g;
+  $outfile =~ s/^(.+)$/Helium-$1.txt/g;
+  my @args3 = ( "-parents", "$parents", "-query", "\"$query\"", "-outfile", "$outfile", "-format", "table0" );
+  #say "perl $Bin/parentage.pl @args3";
+  `perl "$Bin/parentage.pl" @args3`;
+  say "Pedigree file of $query, suitable for uploading to the Helium pedigree viewer (https://helium.hutton.ac.uk/#/pedigree) for a graphical representation: $outfile";
+}
+else {
+  say "No pedigree is available for this individual.";
+}
 
 if (@matches){
   say "$query is in the pedigree of these lines: ", join(", ", @matches), "\n";
@@ -128,6 +142,6 @@ __END__
 Versions
 2024-11-01 Initial version
 2024-11-03 Calculate pedigrees from parentage table using parentage.pl, rather than take in as a precalculated file
-2024-11-04 Fix call to parentage.pl to permit query with spaces
+2024-11-04 Fix call to parentage.pl to permit query with spaces. Also generate a text file that can be uploaded to Helium.
 
 
