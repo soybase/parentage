@@ -34,7 +34,11 @@ my $usage = <<EOS;
   Options:
     -query    ID of an individual for which to calculate parentage.
               If not provided, report parentage for all individuals.
-    -format   Output format. Options: string, table. Either or both (string,table) can be specified. [string]
+    -format   Output format. Options: string, table0, table1, list
+                string: pedigree string, in parenthetical tree format. Printed at increasing depth unless -last_only
+                table0: query parent1 parent2   With header line but no other information
+                table1: query parent1 parent2   With termination information and final pedigree string
+                list:   individual and all parents throughout the pedigree, comma-separated (no parentheses)
     -last_only     For string format, print only the last pedigree string; otherwise, print one for each data line.
     -max_ped_size  The maximum number of individuals in the pedigree to report.
                         When this number is reached, the pedigree of that size will be reported,
@@ -55,6 +59,10 @@ GetOptions(
 
 die $usage if ($help || !defined($parents));
 
+unless ($format =~ /table0|table1|string|list/){
+  die "The -format option must be one of [string, table0, table1, list]. Default is string.\n";
+}
+
 open (my $P_FH, "<", $parents) or die "Can't open in parents: $parents $!\n";
 
 my $ped_str;
@@ -68,14 +76,19 @@ while (<$P_FH>){
   #if (scalar(@parts) < 3){die "Unexpected line with fewer than three elements: $_\n" }
   my ($ind, $p1, $p2) = ($parts[0], $parts[1], $parts[2]);
   if (!defined($p1) || !defined($p2)){
-    if ($verbose){
-      say "!! Skipping line [$line] because one or both parents are missing";
+    if ($query && $query eq $ind){
+      say "!! Skipping parentage report for $query because one or both parents are missing.";
     }
     next;
   }
   # Replace separator " x " with " , "
   $p1 =~ s/ x / , /g;
   $p2 =~ s/ x / , /g;
+  # Replace parens with angles in $p1 and $p2, for cases where the parent is compound
+  $p1 =~ s/\(/</g;
+  $p1 =~ s/\)/>/g;
+  $p2 =~ s/\(/</g;
+  $p2 =~ s/\)/>/g;
   $HoA{ $ind } = [ $p1, $p2 ];
   if ($verbose){say "$ind, $p1, $p2"};
 }
@@ -93,10 +106,12 @@ foreach my $key (sort keys %HoA) {
   $count_processed++;
   my $value = $HoA{$key};
   $pedigree_size = 0;
-  unless ($query){ # If there is a query string, there will be only one report, so there's no reason to give a coun
+  unless ($query || $format =~ /list/){ # If query string, there's only one report, so no reason to give a count
     say "## $count_processed ##";
   }
-  unless ($format =~ /string/){ say "Query\tIndivid\tFParent\tMParent"; }
+  # Print header
+  if ($format =~ /table1/){ say "Query\tGenotype\tFemaleParent\tMaleParent" }
+  elsif ($format =~ /table0/){ say "Genotype\tFemaleParent\tMaleParent" }
   my ($ind, $p1, $p2) = ($key, $value->[0], $value->[1]);
   $QUERY_IND = $ind;
 
@@ -113,19 +128,24 @@ foreach my $key (sort keys %HoA) {
   ped($ind, \%HoA);
   
   if ($size_terminate == 1){
-    say "!! Terminating search because number of individuals is greater than max_ped_size $max_ped_size";
+    unless ($format =~ /table0|list/){
+      say "!! Terminating search because number of individuals is greater than max_ped_size $max_ped_size";
+    }
   }
   if ($cycle == 1){
     if ($size_terminate == 0){ # Don't bother reporting cycle if terminating because we've hit $max_ped_size
-      say "!! Terminating search because of cycle.";
-      if ($cycle_string1){say $cycle_string1 }
-      if ($cycle_string2){say $cycle_string2 }
+      unless ($format =~ /table0|list/){
+        say "!! Terminating search because of cycle.";
+        if ($cycle_string1){say $cycle_string1 }
+        if ($cycle_string2){say $cycle_string2 }
+      }
     }
   }
-  # At end of table, also print pedigree string
-  if ($format =~ /table/){ print_ped_string($ped_str) }
+  # At end of table, also print pedigree string, if -format table1
+  if ($format =~ /table1/){ print_ped_string($ped_str) }
   if ($format =~ /string/ && $last_only){ print_ped_string($ped_str) }
-  say "";
+  if ($format =~ /list/){print_list($ped_str) }
+  if ($query && $format !~ /list/){ say "" } # print separator if more than just the query are being processed
 }
 
 sub ped {
@@ -181,6 +201,24 @@ sub print_ped_string {
   say "$ped_str";
 }
 
+sub print_list {
+  $ped_str = shift;
+  $ped_str =~ s/\[([^]]+)\]:/$1/;
+  my (@parts, @parent_A);
+  $ped_str =~ s/[<,>]/\n/g;
+  $ped_str =~ s/^ +| +$//g;
+  my $count_indiv = 0;
+  @parts = split "\n", $ped_str;
+  foreach my $line (@parts){
+    $line =~ s/^ +| +$//g;
+    $line =~ s/,//;
+    if (length($line)) {
+      push @parent_A, $line;
+    }
+  }
+  say join("\t", @parent_A);
+}
+
 sub count_individuals {
   $ped_str = shift;
   my $count_indiv= 0;
@@ -199,7 +237,12 @@ sub count_individuals {
 
 sub print_table_row {
   my $st_ind = shift; my $key = shift; my $p1 = shift; my $p2 = shift;
-  say join("\t", "$st_ind ::", $key, $p1, $p2);
+  if ($format =~ /table1/){
+    say join("\t", "$st_ind ::", $key, $p1, $p2);
+  }
+  elsif ($format =~ /table0/){
+    say join("\t", $key, $p1, $p2);
+  }
 }
 
 __END__
@@ -213,3 +256,4 @@ Versions
            Add header for Helium: Genotype  Female Parent  Male Parent
 2024-10-21 Report search pedigree_size
 2024-10-30 Many changes. Initialize start of recursion differently. Remove noself flag and add last_only.
+2024-11-01 Add format options table0 table1 list
