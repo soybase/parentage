@@ -1,5 +1,10 @@
 ### Overview  <a name="overview"/>
+The two scripts in this repository can be used to recursively generate a pedigree, given
+tab-separated data of the form `individual parent1 parent2`; and also to determine what
+other lines in the data have a specified line in their pedigree, and any aliases and comments
+regarding the specified line.
 
+### Main program for recursively calculating pedigrees from parentage data:
 ```
   Usage:  parentage.pl -parents FILE [-options]
 
@@ -20,6 +25,9 @@
   Options:
     -query    ID of an individual for which to calculate parentage.
               If not provided, report parentage for all individuals.
+    -outfile  Print to indicated filename; otherwise to STDOUT. 
+              If -outfile "QUERY" is indicated, the query name will be used (with spaces replaced by underscores).
+    -outdir   If outfile is specified, write files to this directory. Default "."
     -format   Output format. Options: string, table. Either or both (string,table) can be specified. [string]
     -last_only     For string format, print only the last pedigree string; otherwise, print one for each data line.
     -max_ped_size  The maximum number of individuals in the pedigree to report.
@@ -29,6 +37,7 @@
     -help     This message.
 ```
 
+### Wrapper program that generates a report including synonyms, comments, and lines with the query individual in their pedigree:
 ```
   Usage:  parentage_report.pl -parents FILE -synonyms FILE -comments FILE -query ID [-options]
   Example:
