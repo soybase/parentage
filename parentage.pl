@@ -192,7 +192,7 @@ sub ped {
     $ped_str =~ s/ $key / < $p1 , $p2 > /g;
 
     # Check if individuals is greater than -max_ped_size
-    my $pedigree_size = count_individuals($ped_str);
+    my $pedigree_size = ($ped_str =~ tr/:,//) + 1;
     if ( $pedigree_size > $max_ped_size ){
       $size_terminate = 1;
       return 0;
@@ -222,35 +222,11 @@ sub print_ped_string {
 sub print_list {
   $ped_str = shift;
   $ped_str =~ s/\[([^]]+)\]:/$1/;
-  my (@parts, @parent_A);
-  $ped_str =~ s/[<,>]/\n/g;
-  $ped_str =~ s/^ +| +$//g;
-  my $count_indiv = 0;
-  @parts = split "\n", $ped_str;
-  foreach my $line (@parts){
-    $line =~ s/^ +| +$//g;
-    $line =~ s/,//;
-    if (length($line)) {
-      push @parent_A, $line;
-    }
-  }
-  printstr(join("\t", @parent_A));
-}
 
-sub count_individuals {
-  $ped_str = shift;
-  my $count_indiv= 0;
-  my $parent_list = $ped_str;
-  $parent_list =~ s/< /\n/g;
-  $parent_list =~ s/ >/\n/g;
-  $parent_list =~ s/ , /\n/g;
-  my @parents = split "\n", $parent_list;
-  foreach my $line (@parents){
-    if (length($line)) {
-      $count_indiv++;
-    }
-  }
-  return $count_indiv;
+  my $parent_A = join("\t", map { s/^ +| +$//g; $_ }
+                            grep { /[^[:space:]]/ }
+                            split /[<,>]/, $ped_str);
+  printstr($parent_A);
 }
 
 sub print_table_row {
@@ -294,3 +270,4 @@ Versions
 2024-10-30 Many changes. Initialize start of recursion differently. Remove noself flag and add last_only.
 2024-11-01 Add format options table0 table1 list
 2024-11-04 Add option to print to specified file, with sub printstr
+2024-11-08 Code optimizations (nweeks); faster counting, and removal of sub count_individuals
