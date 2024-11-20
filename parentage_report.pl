@@ -12,7 +12,7 @@ use JSON;
 use FindBin qw($Bin);
 use lib "$Bin";
 
-my ($query, $verbose, $text_out, $outfile, $help);
+my ($query, $verbose, $text_out, $outfile, $help, $pretty);
 my $format = "string";
 my $line_ct = 0;
 my $max_count = 999;
@@ -66,6 +66,7 @@ my $usage = <<EOS;
 
   Options:
     -text_out   Print a plain-text report to STDOUT; otherwise to JSON (default)
+    -pretty     For JSON output, format for human viewing (with line returns, indentation)
     -plist      Tab-separated file with individual (first column) and all progenitors for that individual
     -outfile    Print pedigree table, suitable for submitting to the Helium viewer, to indicated filename; 
                 otherwise to STDOUT (either in the combined JSON object or in the text report if -text_out).
@@ -83,6 +84,7 @@ GetOptions(
   'comments:s'  => \$comments, # required but with default value
   'plist:s'     => \$plist,    
   'text_out'    => \$text_out,    
+  'pretty'      => \$pretty,    
   'outfile:s'   => \$outfile,
   'outdir:s'    => \$outdir,
   'max_count:i' => \$max_count,
@@ -214,8 +216,15 @@ if ( @q_comments ){
 }
 else { $ped_components{"comments"} = "NULL" }
 
-my $JSON = encode_json \%ped_components;
-
+my $json = JSON->new->allow_nonref;
+my $json_text   = $json->encode( \%ped_components );
+my $JSON;
+if ($pretty){
+  $JSON = $json->pretty->encode( \%ped_components );
+}
+else {
+  $JSON = $json->encode( \%ped_components );
+}
 
 if ($text_out){
   my $hsh_ref = decode_json $JSON;
@@ -247,4 +256,4 @@ Versions
 2024-11-04 Fix call to parentage.pl to permit query with spaces. Also generate a text file that can be uploaded to Helium.
 2024-11-08 Set defaults for required data files. For increased speed, optionally take in -plist data/parentage-list.tsv
 2024-11-19 Encode all data in a JSON object
-
+2024-11-20 Add pretty-print option for JSON
