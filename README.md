@@ -93,6 +93,7 @@ regarding the specified line.
 
   Options:
     -text_out   Print a plain-text report to STDOUT; otherwise to JSON (default)
+    -pretty     For JSON output, format for human viewing (with line returns, indentation)
     -plist      Tab-separated file with individual (first column) and all progenitors for that individual
     -outfile    Print pedigree table, suitable for submitting to the Helium viewer, to indicated filename; 
                 otherwise to STDOUT (either in the combined JSON object or in the text report if -text_out).
