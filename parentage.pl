@@ -12,11 +12,19 @@ use Getopt::Long;
 my ($parents, $query, $outfile, $last_only, $verbose, $help);
 my $format = "string";
 my $line_ct = 0;
-my $max_ped_size = 999;
+my $max_count = 999;
 my $outdir = ".";
 
 my $usage = <<EOS;
   Usage:  parentage.pl -parents FILE [-options]
+
+  Examples:
+  To generate a file of the parents throughout the pedigree for each individual:
+    parentage.pl -parents data/parentage.tsv -outfile data/parentage-list.tsv -format list 
+  To report the parentage for a given query, built up from the immediate parents through successive genrations:
+    parentage.pl -parents data/parentage.tsv -q Hardin
+  To report the parentage for a given query, in a tabular format suitable for viewing with https://helium.hutton.ac.uk
+    parentage.pl -parents data/parentage.tsv -q Hardin -format table0 -outfile QUERY
 
   Given a file of individuals and parents, recursively determine the pedigree
   (the parentage going back as many generations as possible) for an individual.
@@ -44,7 +52,7 @@ my $usage = <<EOS;
                 table1: query parent1 parent2   With termination information and final pedigree string
                 list:   individual and all parents throughout the pedigree, comma-separated (no parentheses)
     -last_only     For string format, print only the last pedigree string; otherwise, print one for each data line.
-    -max_ped_size  The maximum number of individuals in the pedigree to report.
+    -max_count  The maximum number of individuals in the pedigree to report.
                         When this number is reached, the pedigree of that size will be reported,
                         even if other parents may be found in the input data.
     -verbose  Report some intermediate information.
@@ -52,15 +60,15 @@ my $usage = <<EOS;
 EOS
 
 GetOptions(
-  'parents=s'      => \$parents,  # required
-  'query:s'        => \$query,
-  'outfile:s'      => \$outfile,
-  'outdir:s'       => \$outdir,
-  'format:s'       => \$format,
-  'last_only'      => \$last_only,
-  'max_ped_size:i' => \$max_ped_size,
-  'v|verbose'      => \$verbose,
-  'h|help'         => \$help,
+  'parents=s'   => \$parents,  # required
+  'query:s'     => \$query,
+  'outfile:s'   => \$outfile,
+  'outdir:s'    => \$outdir,
+  'format:s'    => \$format,
+  'last_only'   => \$last_only,
+  'max_count:i' => \$max_count,
+  'v|verbose'   => \$verbose,
+  'h|help'      => \$help,
 );
 
 die $usage if ($help || !defined($parents));
@@ -146,11 +154,11 @@ foreach my $key (sort keys %HoA) {
   
   if ($size_terminate == 1){
     unless ($format =~ /table0|list/){
-      printstr("!! Terminating search because number of individuals is greater than max_ped_size $max_ped_size");
+      printstr("!! Terminating search because number of individuals is greater than max_count $max_count");
     }
   }
   if ($cycle == 1){
-    if ($size_terminate == 0){ # Don't bother reporting cycle if terminating because we've hit $max_ped_size
+    if ($size_terminate == 0){ # Don't bother reporting cycle if terminating because we've hit $max_count
       unless ($format =~ /table0|list/){
         my $details = "";
         if ($cycle_string1){$details .= "$cycle_string1\n" }
@@ -191,9 +199,9 @@ sub ped {
     if ($format =~ /table/){ print_table_row($QUERY_IND, $key, $p1, $p2) }
     $ped_str =~ s/ $key / < $p1 , $p2 > /g;
 
-    # Check if individuals is greater than -max_ped_size
+    # Check if individuals is greater than -max_count
     my $pedigree_size = ($ped_str =~ tr/:,//) + 1;
-    if ( $pedigree_size > $max_ped_size ){
+    if ( $pedigree_size > $max_count ){
       $size_terminate = 1;
       return 0;
     }
@@ -215,7 +223,9 @@ sub print_ped_string {
   $ped_str =~ s/</(/g; 
   $ped_str =~ s/>/)/g; 
   #$ped_str =~ s/ , / X /g; 
-  $ped_str =~ s/\[([^]]+)\]:\s+/$1 ==\t/;
+  $ped_str =~ s/\[([^]]+)\]:\s+//; # Strip query prior to pedigree string
+  $ped_str =~ s/^ +//; # Strip leading spaces
+  $ped_str =~ s/ +$//; # Strip trailing spaces
   printstr("$ped_str");
 }
 
@@ -271,3 +281,4 @@ Versions
 2024-11-01 Add format options table0 table1 list
 2024-11-04 Add option to print to specified file, with sub printstr
 2024-11-08 Code optimizations (nweeks); faster counting, and removal of sub count_individuals
+2024-11-19 Minor code cleanup
