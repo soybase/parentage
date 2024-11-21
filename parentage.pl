@@ -77,7 +77,7 @@ unless ($format =~ /table0|table1|string|list/){
   die "The -format option must be one of [string, table0, table1, list]. Default is string.\n";
 }
 
-open (my $P_FH, "<", $parents) or die "Can't open in parents: $parents $!\n";
+open (my $PAR_FH, "<", $parents) or die "Can't open in parents: $parents $!\n";
 
 my $OUT_FH;
 if ($outfile) { 
@@ -96,7 +96,7 @@ if ($outfile) {
 my $ped_str;
 my %HoA;
 my $QUERY_IND; # global; there are also local instances: $ind (individual)
-while (<$P_FH>){
+while (<$PAR_FH>){
   chomp;
   next if (/^#/ || /^Strain/);
   my $line = $_;
@@ -105,9 +105,7 @@ while (<$P_FH>){
   # Replace parens with angles, for cases where the parent is compound. To make subsequent regexes easier to read.
   $line =~ s/\(/</g;
   $line =~ s/\)/>/g;
-  my @parts = split(/\t+/, $line);
-  #if (scalar(@parts) < 3){die "Unexpected line with fewer than three elements: $_\n" }
-  my ($ind, $p1, $p2) = ($parts[0], $parts[1], $parts[2]);
+  my ($ind, $p1, $p2) = split(/\t+/, $line);
   if (!defined($p1) || !defined($p2)){
     if ($query && $query eq $ind){
       printstr("!! Skipping parentage report for $query because one or both parents are missing.");
@@ -243,10 +241,10 @@ sub print_table_row {
   my $st_ind = shift; my $key = shift; my $p1 = shift; my $p2 = shift;
   $p1 =~ s/</(/g;
   $p1 =~ s/>/)/g;
-  $p1 =~ s/,/X/g;
+  #$p1 =~ s/,/X/g;
   $p2 =~ s/</(/g;
   $p2 =~ s/>/)/g;
-  $p2 =~ s/,/X/g;
+  #$p2 =~ s/,/X/g;
   if ($format =~ /table1/){
     printstr(join("\t", "$st_ind ::", $key, $p1, $p2));
   }
