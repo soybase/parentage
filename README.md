@@ -230,3 +230,25 @@ Essex ==	( ( S-100 , C.N.S. ) , ( ( Roanoke , ( Ogden , C.N.S. ) ) , Perry ) )
 Essex ==	( ( S-100 , C.N.S. ) , ( ( Roanoke , ( ( Tokyo , PI 54610 ) , C.N.S. ) ) , Perry ) ) 
 Essex ==	( ( S-100 , C.N.S. ) , ( ( Roanoke , ( ( Tokyo , PI 54610 ) , C.N.S. ) ) , ( Patoka , L37-1355 ) ) ) 
 ```
+
+### REST API (optional)
+
+The api.pl script uses the [Mojolicious](https://mojolicious.org/) library to provide a simple REST API for parentage_report.pl:
+
+```
+./api.pl daemon # development mode; for production: daemon -m production
+```
+
+An HTTP `GET /<query>` request will return a JSON response for the query; e.g., in another terminal:
+
+```
+curl -Sfs http://localhost:3000/Essex
+```
+
+Appending '/pedigree.helium.zip' will produce a zip file in a format compatible with the [Helium](https://helium.hutton.ac.uk/) pedigree viewer:
+
+```
+curl -Sfs http://localhost:3000/Essex/pedigree.helium.zip
+```
+
+If this API is served from a public web server, the zip file can be imported directly by the Helium public web server (entering the URL in the Helium "Import > "Load Pedigree > Germinate Link" menu).
