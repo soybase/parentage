@@ -239,6 +239,12 @@ The api.pl script uses the [Mojolicious](https://mojolicious.org/) library to pr
 ./api.pl daemon # development mode; for production: daemon -m production
 ```
 
+An HTTP `GET /genotypes` request will return a JSON array of all genotypes that can be used as a query:
+
+```
+curl -Sfs http://localhost:3000/genotypes
+```
+
 An HTTP `GET /<query>` request will return a JSON response for the query; e.g., in another terminal:
 
 ```

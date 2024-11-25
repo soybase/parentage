@@ -2,6 +2,18 @@
 use IO::Compress::Zip qw(zip);
 use Mojolicious::Lite -signatures;
 
+get '/genotypes' => sub ($c) {
+  open(my $fh, '<', 'data/parentage.tsv');
+  my @genotypes;
+
+  while (my $line = <$fh>) {
+    push(@genotypes, (split(/\t/, $line))[0]);
+  }
+
+  close($fh);
+  return $c->render(json => \@genotypes);
+};
+
 get '/:query' => sub ($c) {
   my $parentage_report;
   my $query = $c->param('query');
