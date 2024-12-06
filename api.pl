@@ -5,9 +5,11 @@ use Mojolicious::Lite -signatures;
 get '/genotypes' => sub ($c) {
   open(my $fh, '<', 'data/parentage.tsv');
   my @genotypes;
-
+  <$fh>; # discard first line
   while (my $line = <$fh>) {
-    push(@genotypes, (split(/\t/, $line))[0]);
+    chomp($line);
+    my @fields = map($_ eq '' ? undef : $_, split(/\t/, $line, -1));
+    push(@genotypes, \@fields);
   }
 
   close($fh);
