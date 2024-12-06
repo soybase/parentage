@@ -16,7 +16,7 @@ get '/genotypes' => sub ($c) {
   return $c->render(json => \@genotypes);
 };
 
-get '/:query' => sub ($c) {
+get '/#query' => sub ($c) {
   my $parentage_report;
   my $query = $c->param('query');
   open(my $pipe, '-|', 'perl', 'parentage_report.pl', '-query', $query);
@@ -28,7 +28,7 @@ get '/:query' => sub ($c) {
   }
 };
 
-get '/:query/pedigree.helium.zip' => sub ($c) {
+get '/#query/pedigree.helium.zip' => sub ($c) {
   my $query = $c->param('query');
   my $zipfile;
   open(my $table, '-|', 'perl', 'parentage_report.pl', '-table', '-query', $query);
